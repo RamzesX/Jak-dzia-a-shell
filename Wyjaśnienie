@@ -1,0 +1,210 @@
+Tekst jest odpowiedzią na zadane przez koleżankę pytanie czym własciwie jest shell, tty, konsola terminal itp
+Odpowiedziłem jej wtedy na fb, a tutaj prezentuje przekejoną zawartość
+
+
+Opowiem jak to działa na Linuxach.
+Po pierwsze rozdzielmy trochę terminologie.
+Istnieje coś takiego jak shell, terminal i konsola i klawiatura i ekran.
+A także coś takiego jak pseudoterminale.
+No i ten terminal może być albo sprzętowy ( jak dawniej)
+https://en.wikipedia.org/wiki/Computer_terminal
+albo emulowany
+A jak jest emulowany to wtedy możemy mieć do czynienia z emulacja
+a) tekstowa
+b) graficzna
+------------------------------------
+
+
+W książce Tannebauma ( MInix book), jest szczegółowo opisany ten tryb sprzętowy.
+Tam terminal to był po prostu zestaw urządzeń składający się z konsoli( ekranu) i klawiatury.
+Ten zestaw był podłączony do kompa.
+W systemie operacyjnym był sterownik który odpowiadał za pisanie i czytanie z tego urządzenia.
+Trzeba jeszcze wspomnieć może o tym, ze na tym udzadzeniu była cześć kodu która polegała na tym,
+ze można było edytować wprowadzona przez siebie linie i dopiero potem ja wysłać do systemu. 
+To się chyba nazywało Line discipline. ( ale tak serio to jeśli na tym urządzeniu nie było żadnego mikroprocesora,
+to w sumie ta część logiki mogla być przesunięta do drivera)
+
+okej,
+po stronie jakby systemu operacyjnego, ale w przestrzeni usera
+istnieje sobie taki proces jak shell.
+shell to program który ma otwarte domyślnie 3 pliki.
+standard input, standard output, standard error.
+Shell czyta ze swojego wejścia jakiś tekst oraz analizuje go aby potem wykonać odpowiednie polecenie.
+Ten tekst to może być na przykład
+"vi -H /norbert/home/dokument"
+i wtedy to co się dzieje to shell widzi, ze ta linia sklada sie z 3 rzeczy
+vi - nazwa programu do uruchomienia
+-H opcje z jakimi program ma byc uruchomiony
+/norbert/home/dokument - plik ktory ma byc otwarty
+no i to jak shell wykonuje swoja prace przebiega mniej wiecej tak:
+
+bierze ta nazwe vi, i szuka pliku ktory zawiera kod tego programu gdzieś na dysku,
+lista przeszukiwanych lokalizacji zdanjduje sie w zmiennej Path.
+jak go znajdzie to wtedy , tworzy wlasna kopie ( tzn shella) za pomoca wywolania fork,
+a potem za pomoca wywloania exec zamienia dane znajdujace sie w przestrzeni adresowej nowego procesu na kod vi.
+no i te wszystkie opcje i argumenty to mu zostawia w jakiejs tablicy,
+a pewnie w jakims rejestrze, albo na stosie zostawia do niej wskaznik. 
+
+( nie wiem jak dokladnie, ale cos w tym stylu)
+
+i wtedy taki nowi vi, dziedziczy po starym shellu chyba jego zmienne srdowiskowe,
+otwarte pliki itd, wlasciciela , prawa itp
+otwarte pliki to znaczy, ze tez np jak shell mial otwarte pliki wskazujace na terminal
+to wtedy tez ten vi bedzie na termianal pisal.
+
+okej oprocz forka i execa, istnieje jeszcze parę innych wywołań służących do np:
+- przeglądania struktury plików,
+- sterownia procesami itd.
+- manipulacja struktura plików itd.
+i w kodzie shella widzisz to po prostu jako funkcje,
+chociaż tak na prawdę mechanizm wykonania wywolania sytemowego, rozni sie od mechanizmu wywołania zwyklej funkcji.
+Jeśli chcesz dobrze wiedzieć jak dokładnie działa shell to zapraszam
+do zapoznania się z książka wspomnianego już pana Tannenbauma.
+Godna uwagi jest również Xv6 book.
+---------------------------------------------------------------------------------------
+
+
+Okej, te 3 pliki to mogą być zarówno normalne pliki ( tekstowe, binarne) , 
+jak i pseudo pliki które służą do obsługi urządzeń.
+i jak jesteśmy w przypadku sprzetowym
+to jak taki shell będzie czytał z standardowego wejscia
+to tak na prawdę będzie czytał z pewnego bufora który stworzył dla niego system operacyjny,
+( bufor, czyli taka lokalizacja w pamięci )
+
+( ten bufor jest w przestrzeni usera, ale os ma do niego dostęp i do niego pisze,
+ zreszta w ten spsob jest zazwyczaj rozwiazna komunikacja miedzy procesem a systemem,
+ system i proces komunikja sie za pomoca obszaru w pamieci, ktory nalezy do procesu)
+
+zawsze jak linia tekstu bedzie juz gotowa ( wtedy gdy naciskamy enter na przyklad)
+to wtedy taka linia tekstu trafia do tego bufora,
+shell za jakis czas ( bo niekoniecznie od razu, w sensie to nie musi byc trigerowane, ale moze ) 
+sprawdza czy czasem tam czegos nie ma,
+jak jest to wtedy robi to co mowilem przy omawianiu vi.
+z tym za jakis czas, to moze byc roznie,
+bo na przyklad ten shell moze byc wybudzany wtedy gdy ktos napisze do jego pliku, 
+ale nawet wtedy, ten shell nie robi tego od razu ;)
+aha, taki flow-control wyglada w ten sposob
+key-press - > sterownik/albo kod znajdujacy sie na urzadzeniu, ktory ogareani edycje lini -> 
+sterownik ktory, bierze gotowa linie i wprowadza ja do bufora z ktorego czyta shell ->
+opcjonalne obudzenie shella -> shell czyta z wejscia i cos robi
+to bylo o standardowym wejsciu
+-------------------------------------
+
+
+standardowe wyjscie
+kiedy shell zakończy prace i będzie chciał nam wylistowac na przyklad wszystkie katalogi
+to wtedy bedzie pisal jakis teskt na standardowe wyjscie.
+kiedy to zrobi, wywola odpowiednie wywołanie systemowe na pliku wyjscia
+wtedy uruchomi sie kod os-a , ktory wywola kod sterownika terminala,
+ktory to kod bedzie sterowal konsola, i ktory bedzie jej kazal wyswietlic na ekranie jakies literki
+flow wyglada tak
+shell pisze do pliki ( write ) - > os-dispatcher - > kod drivera ktory steruje konsola )
+------------------------------------------------------------------------------------------------
+
+
+no i to było dawno
+teraz mamy emulatory,
+i moze opisze jak dzialaja te graficzne
+w trybie graficznym
+istnieje sobie taki proces jak x-server, ktory steruje wyswietlaniem okienek na ekranie
+i śledzeniem ktore eventy z klawiatury powinny trafic do którego okienka.
+
+istnieja takze programy takie jak np xterm, albo gnome-terminal, ktore nazywamy emulatorami konsoli,
+i ktore wymieniaja dane z x-severem, i dzialaja razem z nim w architekturze klient-server
+( to nie musi byc na zasadzie standrowego wyjscia i wyjscia, chyba cos bardziej skomplikowanego tym razem)
+i tutaj dochodza jeszcze dwa elementy, czyli pseudoterminale
+i to nie jest dla mnie jasne, po co one sa,
+ale moze miec to zwiazek z bezpieczenstwem, albo np kontrola sterowania.
+
+te pseudtermianle to pliki urzadzen, tylko to sa tylko i wylacznie urzadzenia wirtualne
+to znaczy, jak do nich bedziesz pisac to uruchomi sie jakis kod, ale zaden hardware nie zostanie w to zaangazowany,
+cos jak jak /dev/null /dev/random
+tam jest master i slave
+i tym razem shell jako pliki do ktorych czyta i pisze
+ma wlasnie tego mastera i slava
+a z kolei ten master i slave tez sa otwarte przez gnome terminal
+gnome terminal wymienia dane z x-severem
+a x-server czyta i pisze z plikow urzadzen takich jak myszka i klawiatura
+oraz jakby forwarduje eventy takie jak nacisniencie klawisza klawiatury do np gnome-terminal,
+shell, gnome-terminal i x-server to sa prcoesy w przestrzni usera
+master i slave, pseudoterminale
+to sa dwa-pesudopliki,
+jak na nich bedziesz czytac i pisac ,to sie wykona kod os-a,
+ale to wszystko jest wirtualne
+
+
+pliki klawiatury i myszki,
+jak na nich czyta i pisze x-sever to sie wykonuje kod ktory dziala z prawdziwymi urzadzeniami
+flow wyglada tak
+shel cos wypisuje ( write na pseudotermianlu) - > kod os-a - > gnome-terminal to czyta i prosi o cos x-severa
+-> x-server patrzy co tam chce gnome-terminal - > x-server pisze na ekran
+-> uruchamia sie kod os-a( driver ) ktory cos robi z ekeranem
+
+
+w druga strone
+ktos naciska cos na klawiaturze/myszce -> analizowanie przerwania przez os
+-> kod drivera -> wpisanie do bufora klawiatury/myszki -> obudzenie x-servera, bo nadszedl event powiazny z tym procesem 
+- > x- server patrzy - > x - server forwarduje do gnome terminala 
+- > gnome terminal reaguje zmieniajc cos graficznie i albo robi zwortke do x-severa, zeby cos zmienil w wygladzie okienka,
+albo pisze do pliku pseudoterminal -> jak pisze to sie uruchamia kod os-a, powiazny z tym pseudoterminalem,
+tutaj moze dzialac ten edytowanie lini byc moze, albo obsluga sygnalow, sprawdzanie zabezpieczen itd, 
+- > ten kod pisze do bufora do ktorego dostep ma shell -> shell moze byc wybudzane i czyta z swojego standardowego wejscia )
+
+jak widzisz w tym przypadku konosla to po prostu proces ktory ogarnia jak w zaleznosci od odpowienich eventow
+powinno wygladac to kolorwe okienko
+ta architektura dobrze jest przestawionaw serii filmikow:
+https://www.youtube.com/watch?v=07Q9oqNLXB4&t=693s
+oraz tutaj
+https://en.wikipedia.org/wiki/Pseudoterminal
+oraz w ksiazkach stevensa
+unix progrraming, czy cos takiego ;)
+----------------------------------------------------------------------
+
+to byl tryb graficzny
+ale warty wspoeminia jest rowniez tryb tekstowy
+ktorym sie trzeba czasem ratowac
+wtedy sa tworzone walsnie jakies pliki tty,
+które emulują działanie takiego terminala
+nie wiem, jak dziala doklandie tam ta architektura
+ale chyba jakos tak:
+shell < - > ttyr/w < - > os-terminal sysbsystem < - > keyboard/mouse driver
+no i tutaj jest pare fajnych rzeczy do wspomnienia bo posix wspomina,
+(chyba, tak slyszalem) ze kazdy proces musi byc powiazny z jakims terminalem
+i wtedy sie mowi o tym jako terminalu sterujacym itd
+ma to chyba jakis zwiazek z job-control, pojeciem seat itd
+ale wiesz to juz wszsytko jest czyto wirtualne i do doczytania
+jak te wszystkie pliki termianali sa powiazne z procesami w systemie
+i jak te terminale sterujące sa dziedziczone i przepisywane od procesu do procesu
+i jak to wplywa, ze jak zabijesz jakis tak proces glowny to co sie stanie z innymi procesami ktore
+jakos sa powiazne przez ten plik z tym pierwszym.
+jest pare artow na ten temat.
+nie chce mi sie teraz szukac,
+mam zapisane w zakladkach i jak bedziesz chciala to moge wkleic, wyslac dm-em
+------------------
+
+
+jesli chodzi o tak zwane przekierowanie,
+to chodzi o to, za zamieniasz standrdowe wejscie/wykscie na jakis inny plik
+i cala magia,
+zaprojektowano to w starożytnych czasach w bell labs:
+https://youtu.be/tc4ROCJYbm0?t=606, no i jeszcze troche wczesniej
+poczytaj o pipach ;)
+
+
+------------------------------------------------
+co jeszcze jest waznego
+jest taki czlowiek na polskim yt i on pokazuje jak napisac wlasny shell i console:
+https://www.youtube.com/watch?v=LnbjkYrCR6M&t=3419s
+to bylo o konsoli
+https://www.youtube.com/watch?v=cxh-Ebd4uP0&t=96s
+tutaj o terminalu
+----------------------------
+
+oprocz tych dwoch ksiazke to jeszcze jest seria na yt o systemach i tam jest spoko wyjaniony fork i exec
+( a takze watki!!!!!)
+https://www.youtube.com/watch?v=k51934LHz3k...
+https://mcdtu.files.wordpress.com/.../tanenbaum_woodhull...
+https://github.com/mit-pdos/xv6-public
+kod xv6 , razem z kodem shella
+oraz ksiazka komentujaca kod systemu
+https://pdos.csail.mit.edu/6.828/2018/xv6/book-rev10.pdf
